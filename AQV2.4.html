@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クイズプラットフォーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #home, #asset-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .asset-item, .quiz-item {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .hidden {
+            background-color: #ddd;
+            cursor: pointer;
+            padding: 2px 5px;
+            border-radius: 4px;
+            display: inline-block;
+            width: 100px;
+            text-align: center;
+        }
+        .hidden:hover {
+            background-color: #ccc;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 2px 5px;
+            font-size: 12px;
+            width: 50px; /* 横幅を小さく設定 */
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            #home, #asset-container {
+                padding: 15px;
+            }
+            button {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>クイズプラットフォーム</h1>
+    <div id="home">
+        <h2>アセット一覧</h2>
+        <div id="asset-list"></div>
+        <button onclick="addAsset()">アセットを追加</button>
+    </div>
+    <div id="asset-container" style="display: none;">
+        <h2 id="asset-title"></h2>
+        <div id="quiz-container"></div>
+        <button onclick="addQuiz()">クイズを追加</button>
+        <button onclick="goHome()">ホームに戻る</button>
+    </div>
+
+    <script>
+        const home = document.getElementById('home');
+        const assetContainer = document.getElementById('asset-container');
+        const assetList = document.getElementById('asset-list');
+        const assetTitle = document.getElementById('asset-title');
+        const quizContainer = document.getElementById('quiz-container');
+        let assets = [];
+
+        function addAsset() {
+            const assetName = prompt('アセット名を入力してください');
+            if (assetName) {
+                const asset = { name: assetName, quizzes: [] };
+                assets.push(asset);
+                updateAssetList();
+            }
+        }
+
+        function updateAssetList() {
+            assetList.innerHTML = '';
+            assets.forEach((asset, index) => {
+                const assetElement = document.createElement('div');
+                assetElement.classList.add('asset-item');
+                assetElement.innerHTML = `
+                    <span onclick="openAsset(${index})">${asset.name}</span>
+                    <button class="delete-btn" onclick="deleteAsset(${index})">削除</button>
+                `;
+                assetList.appendChild(assetElement);
+            });
+        }
+
+        function openAsset(index) {
+            const asset = assets[index];
+            assetTitle.textContent = asset.name;
+            quizContainer.innerHTML = '';
+            asset.quizzes.forEach((quiz, quizIndex) => {
+                const quizElement = document.createElement('div');
+                quizElement.classList.add('quiz-item');
+                quizElement.innerHTML = `
+                    ${createQuizHTML(quiz)}
+                    <button class="delete-btn" onclick="deleteQuiz(${index}, ${quizIndex})">削除</button>
+                `;
+                quizContainer.appendChild(quizElement);
+            });
+            home.style.display = 'none';
+            assetContainer.style.display = 'block';
+        }
+
+        function addQuiz() {
+            const question = prompt('クイズの質問を入力してください（例: 私の名前は（太郎）です）');
+            if (question) {
+                const quizElement = document.createElement('div');
+                quizElement.classList.add('quiz-item');
+                quizElement.innerHTML = `
+                    ${createQuizHTML(question)}
+                    <button class="delete-btn" onclick="deleteQuiz(${assets.findIndex(asset => asset.name === assetTitle.textContent)}, ${assets[assets.findIndex(asset => asset.name === assetTitle.textContent)].quizzes.length})">削除</button>
+                `;
+                quizContainer.appendChild(quizElement);
+
+                const assetIndex = assets.findIndex(asset => asset.name === assetTitle.textContent);
+                assets[assetIndex].quizzes.push(question);
+            }
+        }
+
+        function createQuizHTML(question) {
+            const regex = /\（(.*?)\）/g;
+            let match;
+            let result = '';
+            let lastIndex = 0;
+
+            while ((match = regex.exec(question)) !== null) {
+                result += question.slice(lastIndex, match.index);
+                result += `<span class="hidden" data-answer="${match[1]}" onclick="showAnswer(this)"></span>`;
+                lastIndex = regex.lastIndex;
+            }
+            result += question.slice(lastIndex);
+
+            return result;
+        }
+
+        function showAnswer(element) {
+            const answer = element.getAttribute('data-answer');
+            element.textContent = answer;
+            element.classList.remove('hidden');
+            element.style.backgroundColor = 'transparent';
+        }
+
+        function deleteAsset(index) {
+            if (confirm('このアセットを削除してもよろしいですか？')) {
+                assets.splice(index, 1);
+                updateAssetList();
+            }
+        }
+
+        function deleteQuiz(assetIndex, quizIndex) {
+            if (confirm('このクイズを削除してもよろしいですか？')) {
+                assets[assetIndex].quizzes.splice(quizIndex, 1);
+                openAsset(assetIndex);
+            }
+        }
+
+        function goHome() {
+            home.style.display = 'block';
+            assetContainer.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
